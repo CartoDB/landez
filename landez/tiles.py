@@ -5,6 +5,7 @@ from gettext import gettext as _
 import json
 import mimetypes
 import string
+from worker import Batch
 
 from StringIO import StringIO
 
@@ -236,6 +237,7 @@ class MBTilesBuilder(TilesManager):
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
         self.tmp_dir = os.path.join(self.tmp_dir, basename)
         self.tile_format = kwargs.get('tile_format', DEFAULT_TILE_FORMAT)
+        self.thread_number = kwargs.get('thread_number', 4)
 
         # Number of tiles in total
         self.nbtiles = 0
@@ -302,10 +304,15 @@ class MBTilesBuilder(TilesManager):
             raise EmptyCoverageError(_("No tiles are covered by bounding boxes : %s") % self._bboxes)
         logger.debug(_("%s tiles to be packaged.") % self.nbtiles)
 
+        batch = Batch(self._gather, self.thread_number)
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
+        batch.process(tileslist)
+        batch.wait()
+        """
         for (z, x, y) in tileslist:
             self._gather((z, x, y))
+        """
 
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
